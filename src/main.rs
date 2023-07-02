@@ -11,14 +11,22 @@ struct Node {
 
 const INPUT: &str = "hello world";
 
-fn main() {
-    let mut letters: HashMap<char, usize> = HashMap::new();
+fn gen_freq_map(input: &str) -> HashMap<char, usize> {
+    let mut letters = HashMap::new();
 
-    for c in String::from(INPUT).chars() {
+    for c in String::from(input).chars() {
         letters.entry(c)
             .and_modify(|e| { *e += 1 })
             .or_insert(1);
     }
 
-    println!("{:?}", letters);
+    letters
+}
+
+fn main() {
+    // TODO add file input & command line input
+    println!("Input string: \"{}\"", INPUT);
+    
+    let letters = gen_freq_map(INPUT);
+    println!("Frequency map: {:?}", letters);
 }
