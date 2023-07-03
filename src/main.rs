@@ -37,6 +37,35 @@ fn gen_freq_map(input: &str) -> HashMap<char, usize> {
     letters
 }
 
+fn gen_huff_tree(mut letters: HashMap<char, usize>) -> Box<Node> {
+    let mut heap: BinaryHeap<_> = letters
+    .drain()
+    .map(|(letter, count)| Box::new(Node {
+        letter,
+        count,
+        left: None,
+        right: None
+    }))
+    .collect();
+
+    while heap.len() > 1 {
+        let n1 = heap.pop().unwrap();
+        let n2 = heap.pop().unwrap();
+
+        let sum_count = n1.count + n2.count;
+
+        heap.push(Box::new(Node {
+            left: Some(n1),
+            right: Some(n2),
+            letter: '\0',   // indicates this doesn't have a letter
+            count: sum_count,
+        }));
+    }
+
+    assert_eq!(heap.len(), 1);
+    heap.pop().unwrap()
+}
+
 fn print_tree(root: Node, branch: &str, depth: usize) {
     println!("{}{}( {} | {} )", "│  ".repeat(depth), branch, root.letter, root.count);
     let child_branch = if root.right.is_none() { "└──" } else { "├──" };
@@ -48,35 +77,9 @@ fn main() {
     // TODO add file input & command line input
     println!("Input string: \"{}\"", INPUT);
     
-    let mut letters = gen_freq_map(INPUT);
+    let letters = gen_freq_map(INPUT);
     println!("Frequency map: {:?}", letters);
 
-    let mut heap: BinaryHeap<_> = letters
-        .drain()
-        .map(|(letter, count)| Box::new(Node {
-            letter,
-            count,
-            left: None,
-            right: None
-        }))
-        .collect();
-
-    while heap.len() > 1 {
-        let n1 = heap.pop().unwrap();
-        let n2 = heap.pop().unwrap();
-
-        let sum_count = n1.count + n2.count;
-
-        heap.push(Box::new(Node {
-            left: Some(n1),
-            right: Some(n2),
-            letter: '\0',
-            count: sum_count,
-        }));
-    }
-
-    assert_eq!(heap.len(), 1);
-
-    let root = heap.pop().unwrap();
-    print_tree(*root, "", 0);
+    let huff_tree = gen_huff_tree(letters);
+    print_tree(*huff_tree, "", 0);
 }
