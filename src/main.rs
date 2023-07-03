@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, BinaryHeap}, cmp::{Ordering, Reverse}};
+use std::{collections::{HashMap, BinaryHeap}, cmp::{Ordering}};
 
 type ChildNode = Option<Box<Node>>;
 
@@ -12,7 +12,7 @@ struct Node {
 
 impl Ord for Node {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.count.cmp(&other.count)
+        self.count.cmp(&other.count).reverse()
     }
 }
 
@@ -37,6 +37,13 @@ fn gen_freq_map(input: &str) -> HashMap<char, usize> {
     letters
 }
 
+fn print_tree(root: Node, branch: &str, depth: usize) {
+    println!("{}{}( {} | {} )", "│  ".repeat(depth), branch, root.letter, root.count);
+    let child_branch = if root.right.is_none() { "└──" } else { "├──" };
+    if let Some(nl) = root.left { print_tree(*nl, child_branch, depth+1) }
+    if let Some(nr) = root.right { print_tree(*nr, child_branch, depth+1) }
+}
+
 fn main() {
     // TODO add file input & command line input
     println!("Input string: \"{}\"", INPUT);
@@ -46,7 +53,7 @@ fn main() {
 
     let mut heap: BinaryHeap<_> = letters
         .drain()
-        .map(|(letter, count)| Reverse(Node {
+        .map(|(letter, count)| Box::new(Node {
             letter,
             count,
             left: None,
@@ -54,7 +61,22 @@ fn main() {
         }))
         .collect();
 
-    while !heap.is_empty() {
-        println!("{:?}", heap.pop())
+    while heap.len() > 1 {
+        let n1 = heap.pop().unwrap();
+        let n2 = heap.pop().unwrap();
+
+        let sum_count = n1.count + n2.count;
+
+        heap.push(Box::new(Node {
+            left: Some(n1),
+            right: Some(n2),
+            letter: '\0',
+            count: sum_count,
+        }));
     }
+
+    assert_eq!(heap.len(), 1);
+
+    let root = heap.pop().unwrap();
+    print_tree(*root, "", 0);
 }
