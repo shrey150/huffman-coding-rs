@@ -1,6 +1,7 @@
 use std::{collections::{HashMap, BinaryHeap}, cmp::{Ordering}};
 
 type ChildNode = Option<Box<Node>>;
+type HuffMap = HashMap<char, Vec<u8>>;
 
 #[derive(PartialEq, Eq, Debug)]
 struct Node {
@@ -22,7 +23,7 @@ impl PartialOrd for Node {
     }
 }
 
-const INPUT: &str = "hello world";
+const INPUT: &str = "aaaaaaaaaabcccccccccccccccddddddd";
 
 fn gen_freq_map(input: &str) -> HashMap<char, usize> {
     let mut letters = HashMap::new();
@@ -39,14 +40,14 @@ fn gen_freq_map(input: &str) -> HashMap<char, usize> {
 
 fn gen_huff_tree(mut letters: HashMap<char, usize>) -> Box<Node> {
     let mut heap: BinaryHeap<_> = letters
-    .drain()
-    .map(|(letter, count)| Box::new(Node {
-        letter: Some(letter),
-        count,
-        left: None,
-        right: None
-    }))
-    .collect();
+        .drain()
+        .map(|(letter, count)| Box::new(Node {
+            letter: Some(letter),
+            count,
+            left: None,
+            right: None
+        }))
+        .collect();
 
     while heap.len() > 1 {
         let n1 = heap.pop().unwrap();
@@ -80,13 +81,13 @@ fn print_tree(root: &Node, branch: &str, depth: usize) {
     if let Some(nr) = &root.right { print_tree(&nr, child_branch, depth+1) }
 }
 
-fn huff_encode(root: &Node) -> HashMap<char, Vec<u8>> {
+fn huff_encode(root: &Node) -> HuffMap {
     let mut map: HashMap<char, Vec<u8>> = HashMap::new();
     get_huff_codes(root, vec![], &mut map);
     map
 }
 
-fn get_huff_codes(n: &Node, bits: Vec<u8>, map: &mut HashMap<char, Vec<u8>>) {
+fn get_huff_codes(n: &Node, bits: Vec<u8>, map: &mut HuffMap) {
     // invariant: a leaf node will always have Some letter and None for children
     if n.letter.is_some() && n.left.is_none() && n.right.is_none() {
         map.entry(n.letter.clone().unwrap()).or_insert(bits);
@@ -102,6 +103,46 @@ fn get_huff_codes(n: &Node, bits: Vec<u8>, map: &mut HashMap<char, Vec<u8>>) {
     }
 }
 
+fn ilog2(mut n: usize) -> usize {
+    let mut i = 0;
+    while n > 1 {
+        i += 1;
+        n /= 2;
+    }
+    i
+}
+
+fn get_bitlen(n: usize) -> usize {
+    ilog2(n) + 1
+}
+
+// returns canonical Huffman codes for a letter -> huffcode map.
+// see: https://en.wikipedia.org/wiki/Canonical_Huffman_code
+fn to_canonical_huff(old_map: HuffMap) -> HashMap<char, usize> {
+    let mut bitlens: Vec<_> = old_map.iter().map(|(k,v)| (k,v.len())).collect();
+    bitlens.sort_by(|a,b| {
+        if a.1 == b.1 {
+            a.0.cmp(&b.0)
+        } else {
+            a.1.cmp(&b.1)
+        }
+    });
+
+    println!("{:?}", bitlens);
+
+    let mut seq: usize = 0;
+    let mut map: HashMap<char, usize> = HashMap::new();
+    map.insert(*bitlens[0].0, 0);
+
+    for (ch, len) in bitlens.iter().skip(1)  {
+        // increment seq, ensuring its bitlength equals its non-canon bitlength (len)
+        seq = (seq + 1) << (len - get_bitlen(seq));
+        map.insert(**ch, seq);
+    }
+
+    map
+}
+
 fn main() {
     // TODO add file input & command line input
     println!("Input string: \"{}\"", INPUT);
@@ -114,4 +155,7 @@ fn main() {
 
     let map = huff_encode(&huff_tree);
     println!("{:?}", map);
+
+    let canon_map = to_canonical_huff(map);
+    println!("{:?}", canon_map);
 }
