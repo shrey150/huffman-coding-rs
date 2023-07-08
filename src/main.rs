@@ -90,7 +90,7 @@ fn huff_encode(root: &Node) -> HuffMap {
 fn get_huff_codes(n: &Node, bits: Vec<u8>, map: &mut HuffMap) {
     // invariant: a leaf node will always have Some letter and None for children
     if n.letter.is_some() && n.left.is_none() && n.right.is_none() {
-        map.entry(n.letter.clone().unwrap()).or_insert(bits);
+        map.insert(n.letter.clone().unwrap(), bits);
     }
     else {
         let mut bits_l = bits.clone();
@@ -118,8 +118,9 @@ fn get_bitlen(n: usize) -> usize {
 
 // returns canonical Huffman codes for a letter -> huffcode map.
 // see: https://en.wikipedia.org/wiki/Canonical_Huffman_code
-fn to_canonical_huff(old_map: HuffMap) -> HashMap<char, usize> {
-    let mut bitlens: Vec<_> = old_map.iter().map(|(k,v)| (k,v.len())).collect();
+fn huff_to_canon(map: HuffMap) -> Vec<(char, usize)> {
+    // sort key-value tuples by bitlength first, then letter. ascending order
+    let mut bitlens: Vec<_> = map.iter().map(|(k,v)| (k,v.len())).collect();
     bitlens.sort_by(|a,b| {
         if a.1 == b.1 {
             a.0.cmp(&b.0)
@@ -128,20 +129,33 @@ fn to_canonical_huff(old_map: HuffMap) -> HashMap<char, usize> {
         }
     });
 
-    println!("{:?}", bitlens);
-
+    // set first letter's canonical Huffcode to 0
     let mut seq: usize = 0;
-    let mut map: HashMap<char, usize> = HashMap::new();
-    map.insert(*bitlens[0].0, 0);
+    let mut final_bitlens = vec![(*bitlens[0].0, 0)];
 
+    // increment code each time, ensuring its bitlength is as long as its non-canon bitlength
     for (ch, len) in bitlens.iter().skip(1)  {
-        // increment seq, ensuring its bitlength equals its non-canon bitlength (len)
         seq = (seq + 1) << (len - get_bitlen(seq));
-        map.insert(**ch, seq);
+       final_bitlens.push((**ch, seq));
     }
 
-    map
+    final_bitlens
 }
+
+// TODO implement
+fn encode_msg(msg: &str, map: &HuffMap) -> String {
+    let mut encoded_msg = String::new();
+    for ch in msg.chars() {
+        let bits: String = map[&ch]
+            .iter()
+            .map(|b| std::char::from_digit((*b).into(), 10).unwrap())
+            .collect();
+        encoded_msg.push_str(&bits);
+    }
+    encoded_msg
+}
+fn decode_msg(msg: String, huff_tree: &Node) -> String { "".to_string() }
+fn canon_to_huff(codes: Vec<(char, usize)>) -> HuffMap { HuffMap::new() }
 
 fn main() {
     // TODO add file input & command line input
@@ -155,7 +169,11 @@ fn main() {
 
     let map = huff_encode(&huff_tree);
     println!("{:?}", map);
+    
+    let encoded_msg = encode_msg(INPUT, &map);
+    println!("Encoded message: {}", encoded_msg);
+    
+    let canon_codes = huff_to_canon(map);
+    println!("{:?}", canon_codes);
 
-    let canon_map = to_canonical_huff(map);
-    println!("{:?}", canon_map);
 }
