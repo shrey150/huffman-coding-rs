@@ -135,14 +135,13 @@ fn huff_to_canon(map: HuffMap) -> Vec<(char, usize)> {
 
     // increment code each time, ensuring its bitlength is as long as its non-canon bitlength
     for (ch, len) in bitlens.iter().skip(1)  {
-        seq = (seq + 1) << (len - get_bitlen(seq));
+        seq = (seq + 1) << (len - get_bitlen(seq)); // FIXME panicks sometimes with 'attempt to subtract with overflow'
        final_bitlens.push((**ch, seq));
     }
 
     final_bitlens
 }
 
-// TODO implement
 fn encode_msg(msg: &str, map: &HuffMap) -> String {
     let mut encoded_msg = String::new();
     for ch in msg.chars() {
@@ -154,7 +153,27 @@ fn encode_msg(msg: &str, map: &HuffMap) -> String {
     }
     encoded_msg
 }
-fn decode_msg(msg: String, huff_tree: &Node) -> String { "".to_string() }
+
+fn decode_msg(msg: &str, huff_tree: &Node) -> String {
+    let mut decoded_msg = String::new();
+
+    let mut n = huff_tree;
+    let mut it = msg.chars().peekable();
+    while it.peek().is_some() {
+        while n.left.is_some() && n.right.is_some() && n.letter.is_none() {
+            n = match it.peek() {
+                Some('0') => n.left.as_ref().unwrap(),
+                Some('1') => n.right.as_ref().unwrap(),
+                _ => panic!("Unknown character '{}' encountered while decoding message", it.peek().unwrap())
+            };
+            it.next();
+        }
+        decoded_msg.push(n.letter.unwrap());
+        n = huff_tree;
+    }
+    decoded_msg
+}
+
 fn canon_to_huff(codes: Vec<(char, usize)>) -> HuffMap { HuffMap::new() }
 
 fn main() {
@@ -172,8 +191,10 @@ fn main() {
     
     let encoded_msg = encode_msg(INPUT, &map);
     println!("Encoded message: {}", encoded_msg);
+
+    let decoded_msg = decode_msg(&encoded_msg, &huff_tree);
+    println!("Decoded message: {}", decoded_msg);
     
     let canon_codes = huff_to_canon(map);
     println!("{:?}", canon_codes);
-
 }
