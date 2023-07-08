@@ -4,7 +4,7 @@ type ChildNode = Option<Box<Node>>;
 type HuffMap = HashMap<char, Vec<u8>>;
 
 #[derive(PartialEq, Eq, Debug)]
-struct Node {
+pub struct Node {
     left: ChildNode,
     right: ChildNode,
     letter: Option<char>,
@@ -23,7 +23,7 @@ impl PartialOrd for Node {
     }
 }
 
-const INPUT: &str = "aaaaaaaaaabcccccccccccccccddddddd";
+const INPUT: &str = "hello world";
 
 fn gen_freq_map(input: &str) -> HashMap<char, usize> {
     let mut letters = HashMap::new();
@@ -154,7 +154,7 @@ fn encode_msg(msg: &str, map: &HuffMap) -> String {
     encoded_msg
 }
 
-fn decode_msg(msg: &str, huff_tree: &Node) -> String {
+pub fn decode(msg: &str, huff_tree: &Node) -> String {
     let mut decoded_msg = String::new();
 
     let mut n = huff_tree;
@@ -176,25 +176,59 @@ fn decode_msg(msg: &str, huff_tree: &Node) -> String {
 
 fn canon_to_huff(codes: Vec<(char, usize)>) -> HuffMap { HuffMap::new() }
 
-fn main() {
-    // TODO add file input & command line input
-    println!("Input string: \"{}\"", INPUT);
+pub fn encode(input: &str) -> (String, Node) {
+    dbg!("Input string: \"{}\"", input);
     
-    let letters = gen_freq_map(INPUT);
-    println!("Frequency map: {:?}", letters);
+    let letters = gen_freq_map(input);
+    dbg!("Frequency map: {:?}", &letters);
 
     let huff_tree = gen_huff_tree(letters);
     print_tree(&huff_tree, "", 0);
 
     let map = huff_encode(&huff_tree);
-    println!("{:?}", map);
+    dbg!("{:?}", &map);
     
     let encoded_msg = encode_msg(INPUT, &map);
-    println!("Encoded message: {}", encoded_msg);
+    dbg!("Encoded message: {}", &encoded_msg);
 
-    let decoded_msg = decode_msg(&encoded_msg, &huff_tree);
+    (encoded_msg, *huff_tree)
+}
+
+fn main() {
+    println!("Input: {}", INPUT);
+    let (e_msg, huff_tree) = encode(INPUT);
+    println!("Encoded message: {}", e_msg);
+    let decoded_msg = decode(&e_msg, &huff_tree);
     println!("Decoded message: {}", decoded_msg);
     
-    let canon_codes = huff_to_canon(map);
-    println!("{:?}", canon_codes);
+    // let canon_codes = huff_to_canon(map);
+    // dbg!("{:?}", canon_codes);
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{fs::File, io::{BufReader, self, BufRead}};
+
+    use super::*;
+
+    #[test]
+    fn test_all_words() -> io::Result<()> {
+        let file = File::open("words.txt")?;
+        let reader = BufReader::new(file);
+
+        for line in reader.lines() {
+            let word = line?;
+            println!("Testing \"{}\"", &word);
+            test_word(&word);
+            println!("✅ \"{}\"", &word);
+        }
+
+        Ok(())
+    }
+
+    fn test_word(input: &str) {
+        let (e_msg, huff_tree) = encode(input);
+        let d_msg = decode(&e_msg, &huff_tree);
+        assert_eq!(input, d_msg);
+    }
 }
